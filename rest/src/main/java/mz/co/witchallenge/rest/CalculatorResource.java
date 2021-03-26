@@ -1,45 +1,96 @@
 package mz.co.witchallenge.rest;
 
+import mz.co.witchallenge.exception.ResponseWaitException;
+import mz.co.witchallenge.service.RestQueueService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.context.request.async.DeferredResult;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.awaitility.Awaitility.await;
 
 @RestController
 public class CalculatorResource {
 
-    @GetMapping
-    public BigDecimal sum(BigDecimal a, BigDecimal b) {
-        validate(a, b);
-        return a.add(b);
+    private static final List<String> validOperations = Arrays.asList("sum", "subtract", "multiply", "divide");
+
+    @Value("${calculator.response.wait.time}")
+    private long waitTime;
+
+    private final RestQueueService restQueueService;
+
+    @Autowired
+    public CalculatorResource(RestQueueService restQueueService) {
+        this.restQueueService = restQueueService;
     }
 
-    @GetMapping
-    public BigDecimal subtract(BigDecimal a, BigDecimal b) {
-        validate(a, b);
-        return a.subtract(b);
+    @GetMapping("/{operation}")
+    public DeferredResult<Map<String, Object>> sum(@PathVariable("operation") String operation,
+                                                   @RequestParam BigDecimal a, @RequestParam BigDecimal b) {
+
+        if (!validOperations.contains(operation)) {
+            throw new IllegalArgumentException(String.format("Invalid operation: %s, Allowed operations are: %s",
+                    operation, validOperations));
+        }
+
+        return asyncResponse(operation, a, b);
     }
 
-    @GetMapping
-    public BigDecimal multiply(BigDecimal a, BigDecimal b) {
-        validate(a, b);
-        return a.multiply(b);
+    private DeferredResult<Map<String, Object>> asyncResponse(String operation, BigDecimal a, BigDecimal b) {
+        DeferredResult<Map<String, Object>> deferredResult = new DeferredResult<>();
+        String uuid = sendRequest(operation, a, b);
+
+        ForkJoinPool.commonPool().submit(() -> {
+            AtomicBoolean deferred = new AtomicBoolean(false);
+
+            await().atMost(waitTime, TimeUnit.SECONDS).until(() -> {
+                Map<String, Object> responseMap = restQueueService.getByUuid(uuid);
+                if (responseMap == null) return false;
+
+                deferredResult.setResult(composeResult(responseMap));
+                deferred.set(true);
+                return true;
+            });
+
+            if (!deferred.get()) {
+                throw new ResponseWaitException(String.format("Timeout waiting for calc response. uuid: %s", uuid));
+            }
+        });
+
+        deferredResult.onError((Throwable t) -> deferredResult.setErrorResult(composeError()));
+        return deferredResult;
     }
 
-    @GetMapping
-    public BigDecimal divide(BigDecimal a, BigDecimal b) {
-        validate(a, b);
-        if (b.compareTo(BigDecimal.ZERO) == 0) throw new IllegalArgumentException("'b' cannot be zero");
-        return a.divide(b, RoundingMode.DOWN);
+    private String sendRequest(String operation, BigDecimal a, BigDecimal b) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("operation", operation);
+        map.put("a", a);
+        map.put("b", b);
+        return restQueueService.send(map);
     }
 
-    private Map<R>
+    private Map<String, Object> composeResult(Map<String, Object> responseMap) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("result", responseMap.get("result"));
+        return map;
+    }
 
-    private void validate(BigDecimal a, BigDecimal b) {
-        if (a == null) throw new IllegalArgumentException("'a' is required");
-        if (b == null) throw new IllegalArgumentException("'b' is required");
+    private Map<String, Object> composeError() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("result", "timeout");
+        return map;
     }
 
 }

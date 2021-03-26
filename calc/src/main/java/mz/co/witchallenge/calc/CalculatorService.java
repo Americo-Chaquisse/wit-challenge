@@ -1,8 +1,11 @@
 package mz.co.witchallenge.calc;
 
+import org.springframework.stereotype.Service;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
+@Service
 public class CalculatorService {
 
     public BigDecimal sum(BigDecimal a, BigDecimal b) {

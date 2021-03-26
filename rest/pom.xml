@@ -11,5 +11,22 @@
 
     <artifactId>rest</artifactId>
 
+    <properties>
+        <awaitility.version>4.0.3</awaitility.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>mz.co.achaquisse</groupId>
+            <artifactId>calc</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <version>${awaitility.version}</version>
+        </dependency>
+
+    </dependencies>
 
 </project>

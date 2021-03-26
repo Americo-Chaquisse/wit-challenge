@@ -11,22 +11,22 @@ import java.math.BigDecimal;
 import java.util.Map;
 
 @Service
-public class RabbitMQSender {
+public class CalcQueueService {
 
-    @Value("${rabbitmq.queue.name}")
-    private String queueName;
+    @Value("${rabbitmq.out.queue.name}")
+    private String outQueueName;
 
     private RabbitTemplate rabbitTemplate;
 
     private CalculatorService calculatorService;
 
     @Autowired
-    public RabbitMQSender(RabbitTemplate rabbitTemplate, CalculatorService calculatorService) {
+    public CalcQueueService(RabbitTemplate rabbitTemplate, CalculatorService calculatorService) {
         this.rabbitTemplate = rabbitTemplate;
         this.calculatorService = calculatorService;
     }
 
-    @RabbitListener(queues = {"${rabbitmq.queue.name}"})
+    @RabbitListener(queues = {"${rabbitmq.in.queue.name}"})
     public void receive(@Payload Map<String, Object> dataMap) {
         if (!dataMap.containsKey("operation")) return;
         if (!(dataMap.get("a") instanceof BigDecimal)) return;
@@ -57,7 +57,7 @@ public class RabbitMQSender {
     }
 
     public void send(Map<String, Object> dataMap) {
-        rabbitTemplate.convertAndSend(queueName, dataMap);
+        rabbitTemplate.convertAndSend(outQueueName, dataMap);
     }
 
 }
