@@ -1,25 +1,24 @@
 package mz.co.witchallenge.rest;
 
-import mz.co.witchallenge.exception.ResponseWaitException;
 import mz.co.witchallenge.service.RestQueueService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.context.request.async.DeferredResult;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.awaitility.Awaitility.await;
 
@@ -41,7 +40,7 @@ public class CalculatorResource {
     }
 
     @GetMapping("/{operation}")
-    public DeferredResult<Map<String, Object>> sum(@PathVariable("operation") String operation,
+    public ResponseEntity<Map<String, Object>> sum(@PathVariable("operation") String operation,
                                                    @RequestParam BigDecimal a, @RequestParam BigDecimal b) {
 
         if (!validOperations.contains(operation)) {
@@ -49,32 +48,24 @@ public class CalculatorResource {
                     operation, validOperations));
         }
 
-        return asyncResponse(operation, a, b);
+        return new ResponseEntity<>(
+                calculate(operation, a, b),
+                HttpStatus.OK);
     }
 
-    private DeferredResult<Map<String, Object>> asyncResponse(String operation, BigDecimal a, BigDecimal b) {
-        DeferredResult<Map<String, Object>> deferredResult = new DeferredResult<>();
+    private Map<String, Object> calculate(String operation, BigDecimal a, BigDecimal b) {
         String uuid = sendRequest(operation, a, b);
+        AtomicReference<Map<String, Object>> responseMap = new AtomicReference<>();
 
-        ForkJoinPool.commonPool().submit(() -> {
-            AtomicBoolean deferred = new AtomicBoolean(false);
-
-            await().atMost(waitTime, TimeUnit.SECONDS).until(() -> {
-                Map<String, Object> responseMap = restQueueService.getByUuid(uuid);
-                if (responseMap == null) return false;
-
-                deferredResult.setResult(composeResult(responseMap));
-                deferred.set(true);
-                return true;
-            });
-
-            if (!deferred.get()) {
-                throw new ResponseWaitException(String.format("Timeout waiting for calc response. uuid: %s", uuid));
-            }
+        await().atMost(waitTime, TimeUnit.SECONDS).until(() -> {
+            responseMap.set(restQueueService.getByUuid(uuid));
+            return responseMap.get() != null;
         });
 
-        deferredResult.onError((Throwable t) -> deferredResult.setErrorResult(composeError()));
-        return deferredResult;
+        if (responseMap.get() != null) {
+            return composeResult(responseMap.get());
+        }
+        return composeError();
     }
 
     private String sendRequest(String operation, BigDecimal a, BigDecimal b) {
@@ -94,7 +85,7 @@ public class CalculatorResource {
         map.put("result", responseMap.get("result"));
 
         if (LOG.isInfoEnabled()) {
-            LOG.info("Composing result to be delivery of: {}", map);
+            LOG.info("Returning result: {}", map);
         }
         return map;
     }

@@ -1,5 +1,9 @@
 package mz.co.witchallenge.service;
 
+import mz.co.witchallenge.filter.Slf4jMDCFilterConfiguration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,10 +14,10 @@ import org.springframework.stereotype.Service;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static java.util.UUID.randomUUID;
-
 @Service
 public class RestQueueService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(RestQueueService.class);
 
     @Value("${rabbitmq.in.queue.name}")
     private String inQueueName;
@@ -28,16 +32,20 @@ public class RestQueueService {
 
     @RabbitListener(queues = {"${rabbitmq.out.queue.name}"})
     public void receive(@Payload Map<String, Object> dataMap) {
-        if (dataMap.containsKey("uuid")) {
-            controlMap.put((String) dataMap.get("uuid"), dataMap);
+        MDC.put(Slf4jMDCFilterConfiguration.MDC_UUID_KEY, (String) dataMap.get(Slf4jMDCFilterConfiguration.MDC_UUID_KEY));
+        if (LOG.isInfoEnabled()) {
+            LOG.info("Received calc response of: {}", dataMap);
+        }
+
+        if (dataMap.containsKey(Slf4jMDCFilterConfiguration.MDC_UUID_KEY)) {
+            controlMap.put((String) dataMap.get(Slf4jMDCFilterConfiguration.MDC_UUID_KEY), dataMap);
         }
     }
 
     public String send(Map<String, Object> dataMap) {
-        String uuid = randomUUID().toString();
-        dataMap.put("uuid", uuid);
+        dataMap.put(Slf4jMDCFilterConfiguration.MDC_UUID_KEY, MDC.get(Slf4jMDCFilterConfiguration.MDC_UUID_KEY));
         rabbitTemplate.convertAndSend(inQueueName, dataMap);
-        return uuid;
+        return (String) dataMap.get(Slf4jMDCFilterConfiguration.MDC_UUID_KEY);
     }
 
     public Map<String, Object> getByUuid(String uuid) {

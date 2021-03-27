@@ -1,4 +1,4 @@
-package mz.co.witchallenge.app;
+package mz.co.witchallenge.filter;
 
 import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
@@ -19,8 +19,8 @@ public class Slf4jMDCFilter extends OncePerRequestFilter {
     private final String requestHeader;
 
     public Slf4jMDCFilter() {
-        responseHeader = Slf4jMDCFilterConfiguration.DEFAULT_RESPONSE_TOKEN_HEADER;
-        mdcTokenKey = Slf4jMDCFilterConfiguration.DEFAULT_MDC_UUID_TOKEN_KEY;
+        responseHeader = Slf4jMDCFilterConfiguration.RESPONSE_HEADER;
+        mdcTokenKey = Slf4jMDCFilterConfiguration.MDC_UUID_KEY;
         requestHeader = null;
     }
 

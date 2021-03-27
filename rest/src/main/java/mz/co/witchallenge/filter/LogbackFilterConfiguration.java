@@ -1,4 +1,4 @@
-package mz.co.witchallenge.app;
+package mz.co.witchallenge.filter;
 
 import ch.qos.logback.access.servlet.TeeFilter;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
