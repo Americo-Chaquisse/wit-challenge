@@ -32,3 +32,6 @@ curl --request GET \
 curl --request GET \
   --url 'http://localhost:8080/divide?a=2.1&b=9'
 ```
+
+# Problemas conhecidos
+* O logback-access não está a logar o corpo da resposta do request
