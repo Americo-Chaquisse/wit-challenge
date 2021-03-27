@@ -3,7 +3,6 @@ package mz.co.witchallenge.calc;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 
 @Service
 public class CalculatorService {
@@ -26,7 +25,7 @@ public class CalculatorService {
     public BigDecimal divide(BigDecimal a, BigDecimal b) {
         validate(a, b);
         if (b.compareTo(BigDecimal.ZERO) == 0) throw new IllegalArgumentException("'b' cannot be zero");
-        return a.divide(b, RoundingMode.DOWN);
+        return a.divide(b);
     }
 
     private void validate(BigDecimal a, BigDecimal b) {

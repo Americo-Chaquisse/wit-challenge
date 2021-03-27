@@ -57,7 +57,7 @@ public class CalculatorResource {
         String uuid = sendRequest(operation, a, b);
         AtomicReference<Map<String, Object>> responseMap = new AtomicReference<>();
 
-        await().atMost(waitTime, TimeUnit.SECONDS).until(() -> {
+        await().pollInterval(5, TimeUnit.MILLISECONDS).atMost(waitTime, TimeUnit.SECONDS).until(() -> {
             responseMap.set(restQueueService.getByUuid(uuid));
             return responseMap.get() != null;
         });

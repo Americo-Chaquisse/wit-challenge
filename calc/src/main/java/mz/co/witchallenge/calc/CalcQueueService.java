@@ -70,7 +70,7 @@ public class CalcQueueService {
         }
     }
 
-    public void send(Map<String, Object> dataMap) {
+    private void send(Map<String, Object> dataMap) {
         if (LOG.isInfoEnabled()) {
             LOG.info("Sending response of: {}", dataMap);
         }
