@@ -2,6 +2,8 @@ package mz.co.witchallenge.rest;
 
 import mz.co.witchallenge.exception.ResponseWaitException;
 import mz.co.witchallenge.service.RestQueueService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +25,8 @@ import static org.awaitility.Awaitility.await;
 
 @RestController
 public class CalculatorResource {
+
+    private static final Logger LOG = LoggerFactory.getLogger(CalculatorResource.class);
 
     private static final List<String> validOperations = Arrays.asList("sum", "subtract", "multiply", "divide");
 
@@ -78,18 +82,27 @@ public class CalculatorResource {
         map.put("operation", operation);
         map.put("a", a);
         map.put("b", b);
+
+        if (LOG.isInfoEnabled()) {
+            LOG.info("Sending request for module calc: {}", map);
+        }
         return restQueueService.send(map);
     }
 
     private Map<String, Object> composeResult(Map<String, Object> responseMap) {
         Map<String, Object> map = new HashMap<>();
         map.put("result", responseMap.get("result"));
+
+        if (LOG.isInfoEnabled()) {
+            LOG.info("Composing result to be delivery of: {}", map);
+        }
         return map;
     }
 
     private Map<String, Object> composeError() {
         Map<String, Object> map = new HashMap<>();
         map.put("result", "timeout");
+        LOG.error("Failed to delivery result due timeout of: {}", map);
         return map;
     }
 

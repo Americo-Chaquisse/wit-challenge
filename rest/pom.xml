@@ -13,6 +13,8 @@
 
     <properties>
         <awaitility.version>4.0.3</awaitility.version>
+        <logback.version>1.2.3</logback.version>
+        <logback-access-spring-boot-starter.version>2.7.1</logback-access-spring-boot-starter.version>
     </properties>
 
     <dependencies>
@@ -25,6 +27,12 @@
             <groupId>org.awaitility</groupId>
             <artifactId>awaitility</artifactId>
             <version>${awaitility.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>net.rakugakibox.spring.boot</groupId>
+            <artifactId>logback-access-spring-boot-starter</artifactId>
+            <version>${logback-access-spring-boot-starter.version}</version>
         </dependency>
 
     </dependencies>
